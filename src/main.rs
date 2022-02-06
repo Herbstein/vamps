@@ -5,8 +5,8 @@ use bevy::{
     input::Input,
     math::{Vec2, Vec3},
     prelude::{
-        App, Color, Commands, Component, KeyCode, OrthographicCameraBundle, Query, Res, ResMut,
-        Transform, With,
+        App, Color, Commands, Component, Entity, KeyCode, OrthographicCameraBundle, Query, Res,
+        ResMut, Transform, With,
     },
     sprite::{Sprite, SpriteBundle},
     DefaultPlugins,
@@ -14,12 +14,12 @@ use bevy::{
 use bevy_rapier2d::{
     na::Vector2,
     physics::{
-        ColliderBundle, ColliderPositionSync, NoUserData, RapierConfiguration, RapierPhysicsPlugin,
-        RigidBodyBundle,
+        ColliderBundle, ColliderPositionSync, IntoHandle, NoUserData, RapierConfiguration,
+        RapierPhysicsPlugin, RigidBodyBundle,
     },
     prelude::{
         CoefficientCombineRule, ColliderMaterial, ColliderPositionComponent, ColliderShape,
-        RigidBodyMassPropsFlags, RigidBodyType, RigidBodyVelocityComponent,
+        NarrowPhase, RigidBodyMassPropsFlags, RigidBodyType, RigidBodyVelocityComponent,
     },
 };
 use rand::prelude::IteratorRandom;
@@ -54,6 +54,8 @@ fn main() {
         .add_system(projectile_movement)
         .add_system(player_movement)
         .add_system(monster_movement)
+        .add_system(player_damage)
+        .add_system(player_death)
         .run();
 }
 
@@ -215,6 +217,32 @@ fn player_movement(
 
     for mut rb_vels in player_transform_query.iter_mut() {
         rb_vels.linvel = direction * 150.0;
+    }
+}
+
+fn player_damage(
+    time: Res<Time>,
+    narrow_phase: Res<NarrowPhase>,
+    monsters: Query<Entity, With<Monster>>,
+    mut player: Query<(Entity, &mut Health), With<Player>>,
+) {
+    for (player, mut health) in player.iter_mut() {
+        for monster in monsters.iter() {
+            if let Some(contact) = narrow_phase.contact_pair(player.handle(), monster.handle()) {
+                if contact.has_any_active_contact {
+                    health.0 -= 20.0 * time.delta_seconds();
+                }
+            }
+        }
+    }
+}
+
+fn player_death(mut player_health: Query<&mut Health, With<Player>>) {
+    let mut player_health = player_health.single_mut();
+
+    if player_health.0 <= 0.0 {
+        println!("player dead, resetting");
+        player_health.0 = 100.0;
     }
 }
 
