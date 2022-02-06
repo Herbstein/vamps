@@ -1,0 +1,10 @@
+[package]
+name = "vamps"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = { version = "0.6.0", features = ["wayland"] }
+bevy_rapier2d = { version = "0.12.1", features = ["simd-stable", "render"] }
+ordered-float = "2.10.0"
+rand = "0.8.4"
